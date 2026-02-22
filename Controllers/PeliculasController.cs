@@ -1,3 +1,5 @@
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,21 +14,24 @@ namespace StreamingAPI.Controllers
     public class PeliculasController : ControllerBase
     {
         private readonly AppDbContext _db;
-        private readonly IWebHostEnvironment _env;
+        private readonly Cloudinary _cloudinary;
 
-        public PeliculasController(AppDbContext db, IWebHostEnvironment env)
+        public PeliculasController(AppDbContext db, IConfiguration config)
         {
             _db = db;
-            _env = env;
+            var account = new Account(
+                config["Cloudinary:CloudName"],
+                config["Cloudinary:ApiKey"],
+                config["Cloudinary:ApiSecret"]
+            );
+            _cloudinary = new Cloudinary(account);
         }
 
-        // Todas las películas - solo admin
         [HttpGet]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetAll()
             => Ok(await _db.Peliculas.OrderByDescending(p => p.FechaRegistro).ToListAsync());
 
-        // Solo películas activas - clientes móvil
         [HttpGet("activas")]
         [Authorize]
         public async Task<IActionResult> GetActivas()
@@ -35,7 +40,6 @@ namespace StreamingAPI.Controllers
                 .OrderByDescending(p => p.FechaRegistro)
                 .ToListAsync());
 
-        // Registrar película
         [HttpPost]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Create([FromForm] PeliculaCreateDto dto)
@@ -44,13 +48,14 @@ namespace StreamingAPI.Controllers
 
             if (dto.Imagen != null && dto.Imagen.Length > 0)
             {
-                var uploadsPath = Path.Combine(_env.WebRootPath ?? "wwwroot", "images");
-                Directory.CreateDirectory(uploadsPath);
-                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(dto.Imagen.FileName)}";
-                var filePath = Path.Combine(uploadsPath, fileName);
-                using var stream = new FileStream(filePath, FileMode.Create);
-                await dto.Imagen.CopyToAsync(stream);
-                imagenUrl = $"/images/{fileName}";
+                using var stream = dto.Imagen.OpenReadStream();
+                var uploadParams = new ImageUploadParams
+                {
+                    File = new FileDescription(dto.Imagen.FileName, stream),
+                    Folder = "streaming/peliculas"
+                };
+                var result = await _cloudinary.UploadAsync(uploadParams);
+                imagenUrl = result.SecureUrl.ToString();
             }
 
             var pelicula = new Pelicula
@@ -68,13 +73,24 @@ namespace StreamingAPI.Controllers
             return Ok(pelicula);
         }
 
-        // Modificar película
         [HttpPut("{id}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Update(int id, [FromForm] PeliculaUpdateDto dto)
         {
             var p = await _db.Peliculas.FindAsync(id);
             if (p == null) return NotFound();
+
+            if (dto.Imagen != null && dto.Imagen.Length > 0)
+            {
+                using var stream = dto.Imagen.OpenReadStream();
+                var uploadParams = new ImageUploadParams
+                {
+                    File = new FileDescription(dto.Imagen.FileName, stream),
+                    Folder = "streaming/peliculas"
+                };
+                var result = await _cloudinary.UploadAsync(uploadParams);
+                p.ImagenUrl = result.SecureUrl.ToString();
+            }
 
             p.Nombre = dto.Nombre;
             p.Genero = dto.Genero;
@@ -84,7 +100,6 @@ namespace StreamingAPI.Controllers
             return Ok(p);
         }
 
-        // Activar
         [HttpPut("{id}/activar")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Activar(int id)
@@ -96,7 +111,6 @@ namespace StreamingAPI.Controllers
             return Ok(new { message = "Película activada" });
         }
 
-        // Inactivar
         [HttpPut("{id}/inactivar")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Inactivar(int id)
@@ -108,7 +122,6 @@ namespace StreamingAPI.Controllers
             return Ok(new { message = "Película inactivada" });
         }
 
-        // Eliminar
         [HttpDelete("{id}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Delete(int id)
@@ -121,3 +134,12 @@ namespace StreamingAPI.Controllers
         }
     }
 }
+```
+
+---
+
+**3. Agrega las variables en Railway** — en el Raw Editor agrega estas 3 líneas adicionales:
+```
+Cloudinary__CloudName=dhcxlrhlm
+Cloudinary__ApiKey=954454494278331
+Cloudinary__ApiSecret=TU_API_SECRET_AQUI
