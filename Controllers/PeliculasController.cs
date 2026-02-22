@@ -134,12 +134,3 @@ namespace StreamingAPI.Controllers
         }
     }
 }
-```
-
----
-
-**3. Agrega las variables en Railway** — en el Raw Editor agrega estas 3 líneas adicionales:
-```
-Cloudinary__CloudName=dhcxlrhlm
-Cloudinary__ApiKey=954454494278331
-Cloudinary__ApiSecret=TU_API_SECRET_AQUI
