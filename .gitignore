@@ -1,0 +1,15 @@
+# Compilados
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+
+# Configuración local
+appsettings.Development.json
+
+# Imágenes subidas por usuarios
+wwwroot/images/*.jpg
+wwwroot/images/*.png
+wwwroot/images/*.jpeg
