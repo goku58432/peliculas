@@ -39,6 +39,7 @@ namespace StreamingAPI.DTOs
         public IFormFile? Imagen { get; set; }
         public string Descripcion { get; set; } = "";
         public string TrailerUrl { get; set; } = "";
+
     }
 
     public class PeliculaUpdateDto
@@ -47,5 +48,7 @@ namespace StreamingAPI.DTOs
         public string Genero { get; set; } = "";
         public string Descripcion { get; set; } = "";
         public string TrailerUrl { get; set; } = "";
+
+        public IFormFile? Imagen { get; set; }
     }
 }
